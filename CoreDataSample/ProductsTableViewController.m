@@ -65,17 +65,20 @@
 }
 
 -(void) addNewProduct:(id)sender {
-    UIAlertController *controller = [UIAlertController alertControllerWithTitle:@"New Basket" message:@"Enter name" preferredStyle:UIAlertControllerStyleAlert];
+    UIAlertController *controller = [UIAlertController alertControllerWithTitle:@"New Product" message:@"Enter name" preferredStyle:UIAlertControllerStyleAlert];
     UIAlertAction *action = [UIAlertAction actionWithTitle:@"Cancel" style:UIAlertActionStyleCancel handler:^(UIAlertAction * _Nonnull action) {
         
     }];
     [controller addAction:action];
     [controller addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
-        textField.placeholder = @"Basket name";
+        textField.placeholder = @"Product name";
+    }];
+    [controller addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
+        textField.placeholder = @"Price";
     }];
     action = [UIAlertAction actionWithTitle:@"Create" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
         UITextField *textField = controller.textFields[0];
-        [self createProductWithName:textField.text];
+        [self createProductWithName:textField.text andPrice:controller.textFields[1].text];
     }];
     
     [controller addAction:action];
@@ -83,16 +86,15 @@
 }
 
 
--(void) createProductWithName:(NSString *)name {
+-(void) createProductWithName:(NSString *)name andPrice:(NSString *)price {
     NSManagedObjectContext *context = [CoreDataManager sharedInstance].managedObjectContext;
     CDProduct *product = [NSEntityDescription insertNewObjectForEntityForName:[[CDProduct class] description]
-                                                     inManagedObjectContext:context];
+                                                       inManagedObjectContext:context];
     product.name = name;
+    product.price = [NSDecimalNumber decimalNumberWithString:price];
     [self.basket addProductsObject:product];
     [context save:nil];
 }
-
-
 
 -(void) tableView:(UITableView *)tableView didSelectRowAtIndexPath:(NSIndexPath *)indexPath {
     CDProduct *product = [self.fetchedResultsController objectAtIndexPath:indexPath];
@@ -147,7 +149,30 @@
     }   
 }
 
+- (NSString *)tableView:(UITableView *)tableView titleForHeaderInSection:(NSInteger)section {
+    id<NSFetchedResultsSectionInfo> sectionInfo = [[self.fetchedResultsController sections] objectAtIndex:section];
+    
+    if ([[sectionInfo indexTitle] isEqualToString:@"1"]) {
+        return @"Purchased";
+    } else {
+        return @"Not Purchased";
+    }
+}
 
+- (NSString *)tableView:(UITableView *)tableView titleForFooterInSection:(NSInteger)section {
+    id<NSFetchedResultsSectionInfo> sectionInfo = [[self.fetchedResultsController sections] objectAtIndex:section];
+    NSDecimalNumber *sum = [NSDecimalNumber decimalNumberWithString:@"0"];
+    if ([[sectionInfo indexTitle] isEqualToString:@"1"]) {
+        for (CDProduct *product in self.basket.products) {
+            if ([product.complete boolValue]) {
+                [sum decimalNumberByAdding:product.price];
+            }
+        }
+        return [sum stringValue];
+    } else {
+        return nil;
+    }
+}
 
 -(void) controllerWillChangeContent:(NSFetchedResultsController *)controller {
     [self.tableView beginUpdates];
